@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting to Payment</title>
+</head>
+<body>
+    <p id="message">Generating your payment link...</p>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const identifier = urlParams.get('identifier');
+        const token = urlParams.get('token');
+        const webhookUrl = 'https://hook.us1.make.com/ilmqbljotfmgzckndjxr5j4d9tm3khux'; // Replace with your Make webhook URL
+        const maxRetries = 10;
+        let retryCount = 0;
+
+        async function fetchPaymentLink() {
+            try {
+                const response = await fetch(`${webhookUrl}?identifier=${identifier}&token=${token}`, {
+                    method: 'GET'
+                });
+                const data = await response.json();
+
+                if (data.payment_link) {
+                    window.location.href = data.payment_link; // Redirect to payment link
+                } else if (data.error_message) {
+                    document.getElementById('message').textContent = `Error: ${data.error_message}`;
+                } else {
+                    // Status is pending or not ready
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(fetchPaymentLink, 1000); // Retry after 1 second
+                    } else {
+                        document.getElementById('message').textContent = 'Timeout: Payment link not generated.';
+                    }
+                }
+            } catch (error) {
+                document.getElementById('message').textContent = 'An error occurred. Please try again.';
+            }
+        }
+
+        if (identifier && token) {
+            fetchPaymentLink();
+        } else {
+            document.getElementById('message').textContent = 'Invalid URL parameters.';
+        }
+    </script>
+</body>
+</html>
